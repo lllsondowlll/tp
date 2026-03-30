@@ -15,7 +15,20 @@
 #include "m_Do/m_Do_machine.h"
 #include "m_Do/m_Do_mtx.h"
 #include "m_Do/m_Do_main.h"
+#include "m_Do/m_Do_controller_pad.h"
 #include "f_op/f_op_overlap_mng.h"
+
+#ifndef TP_DEBUG_MAPSELECT
+#define TP_DEBUG_MAPSELECT 1
+#endif
+
+#if TP_DEBUG_MAPSELECT && !DEBUG
+static BOOL tpMapSelectComboTriggered() {
+    return mDoMain::developmentMode &&
+           (mDoCPd_c::getHold(PAD_1) & ~PAD_TRIGGER_Z) == (PAD_TRIGGER_L | PAD_TRIGGER_R) &&
+           mDoCPd_c::getTrigZ(PAD_1);
+}
+#endif
 
 static dSn_HIO_c g_snHIO;
 
@@ -224,6 +237,11 @@ s32 dScnName_c::execute() {
         dComIfGs_init();
         dComIfG_playerStatusD();
     }
+    #elif TP_DEBUG_MAPSELECT
+    if (!fopOvlpM_IsPeek() && tpMapSelectComboTriggered()) {
+        fopScnM_ChangeReq(this, fpcNm_MENU_SCENE_e, 0, 5);
+        dComIfGs_init();
+    }
     #endif
 
     return 1;
@@ -356,6 +374,12 @@ void dScnName_c::changeGameScene() {
             fopScnM_ChangeReq(this, fpcNm_MENU_SCENE_e, 0, 5);
             dComIfGs_init();
             dComIfG_playerStatusD();
+            return;
+        }
+        #elif TP_DEBUG_MAPSELECT
+        if (dFs_c->getSelectNum() == 0 && mDoMain::developmentMode) {
+            fopScnM_ChangeReq(this, fpcNm_MENU_SCENE_e, 0, 5);
+            dComIfGs_init();
             return;
         }
         #endif

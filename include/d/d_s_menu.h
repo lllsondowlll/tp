@@ -6,7 +6,11 @@
 
 class mDoDvdThd_toMainRam_c;
 
-#if DEBUG
+#ifndef TP_DEBUG_MAPSELECT
+#define TP_DEBUG_MAPSELECT 1
+#endif
+
+#if DEBUG || TP_DEBUG_MAPSELECT
 class myFontClass : public JUTResFont {
 public:
     myFontClass(const ResFONT* i_font, JKRHeap* i_heap)

@@ -24,6 +24,7 @@
 #include "f_op/f_op_overlap_mng.h"
 #include "m_Do/m_Do_Reset.h"
 #include "m_Do/m_Do_graphic.h"
+#include "m_Do/m_Do_main.h"
 #include "d/actor/d_a_suspend.h"
 #include "d/actor/d_a_ykgr.h"
 #include "JSystem/JHostIO/JORFile.h"
@@ -38,8 +39,14 @@
 #include "JSystem/JKernel/JKRAram.h"
 #include "JSystem/JKernel/JKRAramArchive.h"
 
-#if DEBUG
+#ifndef TP_DEBUG_MAPSELECT
+#define TP_DEBUG_MAPSELECT 1
+#endif
+
+#if DEBUG || TP_DEBUG_MAPSELECT
 #include "d/d_s_menu.h"
+#endif
+#if DEBUG
 #include "d/d_debug_pad.h"
 #include "d/d_jpreviewer.h"
 #include "d/d_jcam_editor.h"
@@ -68,6 +75,14 @@ static int phase_3(dScnPly_c*);
 static int phase_4(dScnPly_c*);
 static int phase_5(dScnPly_c*);
 static int phase_6(dScnPly_c*);
+
+#if TP_DEBUG_MAPSELECT && !DEBUG
+static BOOL tpMapSelectComboTriggered() {
+    return mDoMain::developmentMode &&
+           (mDoCPd_c::getHold(PAD_1) & ~PAD_TRIGGER_Z) == (PAD_TRIGGER_L | PAD_TRIGGER_R) &&
+           mDoCPd_c::getTrigZ(PAD_1);
+}
+#endif
 static int phase_compleate(void*);
 
 static request_of_phase_process_class resPhase[1];
@@ -644,6 +659,19 @@ static int dScnPly_Draw(dScnPly_c* i_this) {
     fapGm_HIO_c::printCpuTimer("");
     fapGm_HIO_c::stopCpuTimer("ゲーム管理（計算処理２）");
     fapGm_HIO_c::printCpuTimer("");
+    #elif TP_DEBUG_MAPSELECT
+    if (fopOvlpM_IsDoingReq() != TRUE) {
+        if (dScnMenu_c::isAutoSelect() || tpMapSelectComboTriggered()) {
+            s16 spA = 0;
+            if (dDemo_c::getMode() == 1) {
+                dDemo_c::end();
+                spA = 7;
+            }
+
+            fopScnM_ChangeReq(i_this, fpcNm_MENU_SCENE_e, spA, 5);
+            mDoAud_bgmStop(30);
+        }
+    }
     #endif
 
     for (create_tag_class* i = fopDwIt_Begin(); i != NULL; i = fopDwIt_Next(i)) {

@@ -21,8 +21,12 @@
 
 #include <cstdlib>
 #include <cstring>
- 
-#if DEBUG
+
+#ifndef TP_DEBUG_MAPSELECT
+#define TP_DEBUG_MAPSELECT 1
+#endif
+
+#if DEBUG || TP_DEBUG_MAPSELECT
 void dScnMenu_setItem(int i_slotNo, u8 i_itemNo);
 void dScnMenu_setPlayerDebugMode();
 void dScnMenu_setPlayerItemReset();
@@ -163,11 +167,15 @@ u8 dSm_read_presettxt(u8* i_data) {
                 } else if (value == 0) {
                     // "\n Items initialize once"
                     OS_REPORT("\nアイテム類　一旦初期化", value);
+#if DEBUG
                     dComIfG_playerStatusD_pre_clear();
+#endif
                 } else {
                     // "\n Item Debug Settings"
                     OS_REPORT("\nアイテム類　デバッグ設定", value);
+#if DEBUG
                     dComIfG_playerStatusD();
+#endif
                 }
             } else if (dSm_read_comp_keyword(pos, i_data, "hp", 2) == 0) {
                 value = dSm_read_get_number(i_data, &pos);
@@ -573,7 +581,7 @@ int dScnMenu_Draw(dScnMenu_c* i_this) {
     }
 
     int line_no = l_startID;
-    static int effectQuad2_cnt = 0;
+    int effectQuad2_cnt = 0;
 
     for (int i = 0; i < line_num; i++) {
         if (line_no < menu_info->num) {
@@ -592,7 +600,8 @@ int dScnMenu_Draw(dScnMenu_c* i_this) {
             memset(sub_room_desc, 32, 64);
             memcpy(sub_room_desc, &menu_info->stage_data[line_no].data[l_groupPoint[line_no]], 60);
 
-            if (i_this->current_category == menu_info->stage_data[line_no].field_0x43) {
+            if (i_this->current_category == menu_info->stage_data[line_no].field_0x43 &&
+                effectQuad2_cnt < (int)(sizeof(effectQuad2) / sizeof(effectQuad2[0]))) {
                 GXColor sp2C = {0x00, 0x00, 0xFF, 0x37};
                 effectQuad2[effectQuad2_cnt].init(30, line_y_pos - 16, 540, line_y_pos, sp2C);
                 dComIfGd_set2DOpa(&effectQuad2[effectQuad2_cnt]);
@@ -623,7 +632,8 @@ int dScnMenu_Draw(dScnMenu_c* i_this) {
 
             if (menu_info->stage_data[line_no].field_0x42 != 0xFF) {
                 JUTReport(540, line_y_pos, "+%02d", menu_info->stage_data[line_no].field_0x42);
-                if (menu_info->stage_data[line_no].field_0x42 <= 5) {
+                if (menu_info->stage_data[line_no].field_0x42 <= 5 &&
+                    effectQuad2_cnt < (int)(sizeof(effectQuad2) / sizeof(effectQuad2[0]))) {
                     u8 alpha = (menu_info->stage_data[line_no].field_0x42 / 5.0f) * 80.0f;
                     GXColor sp24 = {0x14, 0x78, 0x14, 0xDC - alpha};
 
@@ -741,10 +751,12 @@ int dScnMenu_Draw(dScnMenu_c* i_this) {
 
     JUTReport(header_x, header_y, "_DEBUG %s %s", mDoMain::COPYDATE_STRING, "Authorized User");
 
+#if DEBUG
     if (g_presetHIO.mPresetData[0] != 0) {
         // "Preset File  In Use"
         JUTReport(450, 380, "状況ファイル　使用中");
     }
+#endif
 
     return 1;
 }
@@ -1314,7 +1326,14 @@ block_24:
         }
     }
 
-    if (mDoCPd_c::getTrigStart(PAD_1) || g_presetHIO.field_0x2717 == 2) {
+    BOOL startTrigger = mDoCPd_c::getTrigStart(PAD_1);
+#if DEBUG
+    if (g_presetHIO.field_0x2717 == 2) {
+        startTrigger = TRUE;
+    }
+#endif
+
+    if (startTrigger) {
         menu_data_class* data = &menu_info->stage_data[l_cursolID].data[l_groupPoint[l_cursolID]];
         dComIfGp_offEnableNextStage();
 
@@ -1328,11 +1347,14 @@ block_24:
         dComIfGp_setNextStage(data->stage_name, point, data->room_no, data->layer);
         setEnvData(data);
 
+#if DEBUG
         if (g_presetHIO.field_0x2717 == 2) {
             g_presetHIO.field_0x2717 = 0;
             dSm_read_stageset(g_presetHIO.mPresetData);
             fopScnM_ChangeReq(i_this, fpcNm_MENU_SCENE_e, 0, 5);
-        } else {
+        } else
+#endif
+        {
             dScnMenu_c::cursolStageName[0] = 0;
             toGameScene(i_this);
         }
@@ -1455,11 +1477,13 @@ block_24:
         }
     }
 
+#if DEBUG
     if (S_antei_cnt > 30) {
         g_presetHIO.exePreset();
     } else {
         S_antei_cnt++;
     }
+#endif
 
     return 1;
 }
@@ -1479,12 +1503,15 @@ int dScnMenu_Delete(dScnMenu_c* i_this) {
     JKRFree(i_this->fontRes);
     fapGmHIO_offMenu();
 
+#if DEBUG
     if (g_presetHIO.mPresetData[0] != 0) {
         g_presetHIO.field_0x2716 = dSm_read_presettxt(g_presetHIO.mPresetData);
         if (g_presetHIO.field_0x2716 != 0) {
             dComIfG_playerStatusD();
         }
-    } else {
+    } else
+#endif
+    {
         dComIfGp_itemDataInit();
     }
 
@@ -1508,7 +1535,9 @@ int phase_1(dScnMenu_c* i_this) {
     i_this->fontCommand = mDoDvdThd_toMainRam_c::create("/res/Menu/kanfont_fix16.bfn", 0, NULL);
     JUT_ASSERT(3086, i_this->fontCommand != NULL);
 
+#if DEBUG
     dComIfG_playerStatusD();
+#endif
     dComIfGs_offDarkClearLV(0);
     dComIfGs_offDarkClearLV(1);
     dComIfGs_offDarkClearLV(2);
